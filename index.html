@@ -129,6 +129,56 @@
             margin-top: 10px;
         }
 
+        .sound-control {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .sound-btn {
+            background: #444;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .sound-btn.active {
+            background: #00aa00;
+        }
+
+        .start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            border-radius: clamp(12px, 4vw, 18px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            cursor: pointer;
+        }
+        .start-overlay span {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffaa66;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .start-overlay small {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 10px;
+        }
+        .canvas-wrapper {
+            position: relative;
+        }
+
         @media (max-width: 550px) {
             body {
                 padding: 5px;
@@ -141,14 +191,21 @@
                 white-space: normal;
                 text-align: center;
             }
+            .start-overlay span {
+                font-size: 1.2rem;
+            }
         }
     </style>
 </head>
 <body>
 <div>
     <div class="game-container">
-        <div class="canvas-wrapper">
+        <div class="canvas-wrapper" id="canvasWrapper">
             <canvas id="gameCanvas" width="900" height="250"></canvas>
+            <div class="start-overlay" id="startOverlay">
+                <span>🎮 НАЖМИТЕ, ЧТОБЫ НАЧАТЬ 🎮</span>
+                <small>Legends Of Manzan</small>
+            </div>
         </div>
         <div class="info-panel">
             <div class="score-box"><span>🍖 SCORE</span> <span id="scoreValue">0</span></div>
@@ -160,6 +217,9 @@
             🥐 ПРОБЕЛ / СТРЕЛКА ВВЕРХ / КЛИК / КНОПКА — ПРЫЖОК
         </div>
         <button class="jump-test-btn" id="jumpButton">⚽ ПРЫЖОК ⚽</button>
+        <div class="sound-control">
+            <button id="musicToggleBtn" class="sound-btn active">🎵 МУЗЫКА ВКЛ</button>
+        </div>
         <div class="loading" id="loadingStatus">📦 ЗАГРУЗКА СПРАЙТОВ...</div>
     </div>
 </div>
@@ -169,6 +229,9 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const loadingDiv = document.getElementById('loadingStatus');
+        const startOverlay = document.getElementById('startOverlay');
+        
+        let gameStarted = false;
         
         const RUN_FRAMES = [
             "manz/1.png",
@@ -268,6 +331,114 @@
         ];
         
         let eiffelX = 750;
+        
+        let soundEnabled = true;
+        let musicEnabled = true;
+        
+        function createAudio(url, loop = false, volume = 0.5) {
+            const audio = new Audio();
+            audio.src = url;
+            audio.loop = loop;
+            audio.volume = volume;
+            audio.load();
+            return audio;
+        }
+        
+        let bgMusic = null;
+        
+        let jumpSounds = [];
+        let deathSounds = [];
+        let runningSounds = [];
+        
+        let lastRunningSoundFrame = 0;
+        let runningSoundCooldown = 120;
+        
+        function initSounds() {
+            bgMusic = createAudio("french meme song.mp3", true, 0.3);
+            
+            jumpSounds = [
+                createAudio("manz/jump1.mp3", false, 0.5),
+                createAudio("manz/jump2.mp3", false, 0.5)
+            ];
+            
+            deathSounds = [
+                createAudio("manz/death1.mp3", false, 0.6),
+                createAudio("manz/death2.mp3", false, 0.6),
+                createAudio("manz/death3.mp3", false, 0.6)
+            ];
+            
+            runningSounds = [
+                <!--createAudio("manz/step1.mp3", false, 0.3)-->
+            ];
+        }
+        
+        function getRandomSound(soundArray) {
+            if (!soundArray.length) return null;
+            const validSounds = soundArray.filter(s => s);
+            if (!validSounds.length) return null;
+            const randomIndex = Math.floor(Math.random() * validSounds.length);
+            return validSounds[randomIndex];
+        }
+        
+        function playRandomJumpSound() {
+            if (!soundEnabled || !gameStarted) return;
+            const sound = getRandomSound(jumpSounds);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("Jump sound error:", e));
+            }
+        }
+        
+        function playRandomDeathSound() {
+            if (!soundEnabled) return;
+            const sound = getRandomSound(deathSounds);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("Death sound error:", e));
+            }
+        }
+        
+        function playRandomRunningSound() {
+            if (!soundEnabled || !gameStarted || !gameRunning) return;
+            const sound = getRandomSound(runningSounds);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log("Running sound error:", e));
+            }
+        }
+        
+        function startMusic() {
+            if (bgMusic && musicEnabled && soundEnabled && gameStarted && gameRunning) {
+                bgMusic.play().catch(e => console.log("Music play error:", e));
+            }
+        }
+        
+        function stopMusic() {
+            if (bgMusic) {
+                bgMusic.pause();
+                bgMusic.currentTime = 0;
+            }
+        }
+        
+        function toggleMusic() {
+            musicEnabled = !musicEnabled;
+            const btn = document.getElementById('musicToggleBtn');
+            if (musicEnabled) {
+                btn.textContent = "🎵 МУЗЫКА ВКЛ";
+                btn.classList.add('active');
+                if (soundEnabled && gameStarted && gameRunning) {
+                    bgMusic.play().catch(e => console.log("Music resume error:", e));
+                }
+            } else {
+                btn.textContent = "🔇 МУЗЫКА ВЫКЛ";
+                btn.classList.remove('active');
+                if (bgMusic) {
+                    bgMusic.pause();
+                }
+            }
+        }
+        
+        document.getElementById('musicToggleBtn').addEventListener('click', toggleMusic);
         
         function drawFootballField() {
             ctx.fillStyle = "#1a5c1a";
@@ -445,11 +616,12 @@
         }
         
         function updateGame() {
-            if(!gameRunning) return;
+            if(!gameStarted || !gameRunning) return;
             
             if(pendingJump && !isJumping && yPos === 0) {
                 isJumping = true;
                 yVelocity = JUMP_POWER;
+                playRandomJumpSound();
             }
             pendingJump = false;
             
@@ -468,6 +640,15 @@
                 if(frameCounter > 5) {
                     frameCounter = 0;
                     currentRunFrame = (currentRunFrame + 1) % runImages.length;
+                    
+                    if (frame - lastRunningSoundFrame > runningSoundCooldown) {
+                        let chance = Math.random();
+                        if (chance < 0.25) {
+                            playRandomRunningSound();
+                            lastRunningSoundFrame = frame;
+                            runningSoundCooldown = 100 + Math.random() * 80;
+                        }
+                    }
                 }
             }
             
@@ -501,6 +682,8 @@
             
             if(checkCollision()) {
                 gameRunning = false;
+                playRandomDeathSound();
+                stopMusic();
                 document.getElementById('gameStatusText').innerHTML = "💀 GAME OVER 💀";
                 return;
             }
@@ -529,7 +712,7 @@
             for(let obs of obstacles) obs.draw();
             drawPlayer();
             
-            if(!gameRunning) {
+            if(!gameRunning && gameStarted) {
                 ctx.fillStyle = "rgba(0,0,0,0.7)";
                 ctx.fillRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
                 ctx.font = "bold 28px 'Courier New'";
@@ -557,21 +740,34 @@
             yVelocity = 0;
             frame = 0;
             pendingJump = false;
+            lastRunningSoundFrame = 0;
             document.getElementById('scoreValue').innerText = "0";
             document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
             updateHighScoreUI();
+            if (gameStarted && musicEnabled && soundEnabled) {
+                startMusic();
+            }
         }
         
         function jump() {
-            if (!gameRunning) return;
+            if (!gameStarted || !gameRunning) return;
             if (!isJumping && yPos === 0) {
                 pendingJump = true;
                 document.getElementById('gameStatusText').innerHTML = "⚽ ПРЫЖОК! ⚽";
                 setTimeout(() => {
-                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
+                    if(gameRunning && gameStarted) document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
                 }, 400);
             }
         }
+        
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+            startOverlay.style.display = "none";
+            restartGame();
+        }
+        
+        startOverlay.addEventListener('click', startGame);
         
         document.getElementById('jumpButton').addEventListener('click', () => jump());
         document.getElementById('jumpButton').addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
@@ -579,6 +775,13 @@
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
         
         document.addEventListener('keydown', (e) => {
+            if (!gameStarted) {
+                if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    startGame();
+                }
+                return;
+            }
             if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') {
                 e.preventDefault();
                 jump();
@@ -586,17 +789,42 @@
             if (e.key === 'r' || e.key === 'R') restartGame();
         });
         
-        document.getElementById('restartButton').addEventListener('click', () => restartGame());
+        document.getElementById('restartButton').addEventListener('click', () => {
+            if (!gameStarted) {
+                startGame();
+            } else {
+                restartGame();
+            }
+        });
         
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') e.preventDefault();
         });
         
-        restartGame();
+        initSounds();
+        
+        function drawStatic() {
+            ctx.clearRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
+            drawParisBackground();
+            drawFootballField();
+            drawPlayer();
+            ctx.font = "bold 22px 'Courier New'";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 2;
+            ctx.fillText("🍖 0", ORIGINAL_WIDTH-85, 38);
+            ctx.shadowBlur = 0;
+            requestAnimationFrame(drawStatic);
+        }
+        
+        if (!gameStarted) {
+            drawStatic();
+        }
         
         function gameLoop() {
-            updateGame();
-            draw();
+            if (gameStarted) {
+                updateGame();
+                draw();
+            }
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
