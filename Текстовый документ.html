@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Бегун | Человек + Свиные рёбрышки | ОТЛАДКА КОЛЛИЗИЙ</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a472a 0%, #0d2818 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', 'Lucida Sans Typewriter', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #2c2c28;
+            border-radius: 32px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1);
+            padding: 20px 25px 25px 25px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 18px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+            background: #87CEEB;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            background: #1a1a1a;
+            color: #ffd966;
+            padding: 8px 20px;
+            border-radius: 60px;
+        }
+
+        .score-box, .high-box {
+            background: #000000;
+            padding: 5px 16px;
+            border-radius: 40px;
+        }
+
+        .restart-btn {
+            background: #d96c1e;
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 6px 20px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+        }
+        .restart-btn:active {
+            transform: scale(0.95);
+        }
+
+        .status {
+            background: #3a2a1a;
+            margin-top: 12px;
+            text-align: center;
+            padding: 8px;
+            border-radius: 40px;
+            font-weight: bold;
+            color: #ffaa66;
+        }
+
+        .controls-hint {
+            font-size: 0.75rem;
+            margin-top: 10px;
+            text-align: center;
+            color: #ccaaff;
+            background: #2a1a0a;
+            padding: 5px;
+            border-radius: 60px;
+        }
+
+        .jump-test-btn {
+            background: #ff6600;
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 10px 25px;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .jump-test-btn:active {
+            transform: scale(0.97);
+        }
+
+        .loading {
+            text-align: center;
+            color: yellow;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .debug-toggle {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .debug-btn {
+            background: #444;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .debug-btn.active {
+            background: #00aa00;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="900" height="250"></canvas>
+        <div class="info-panel">
+            <div class="score-box"><span>🍖 SCORE</span> <span id="scoreValue">0</span></div>
+            <div class="high-box"><span>🏆 BEST</span> <span id="highScoreValue">0</span></div>
+            <button class="restart-btn" id="restartButton">▶ НОВАЯ ИГРА</button>
+        </div>
+        <div class="status" id="gameStatusText">🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖</div>
+        <div class="controls-hint">
+            🍖 ПРОБЕЛ / СТРЕЛКА ВВЕРХ / КЛИК / КНОПКА ВНИЗУ — ПРЫЖОК 🍖
+        </div>
+        <button class="jump-test-btn" id="jumpButton">🍖 ПРЫЖОК 🍖</button>
+        <div class="debug-toggle">
+            <button id="debugToggleBtn" class="debug-btn active">🔴 ВКЛЮЧИТЬ ВИД КОЛЛИЗИЙ</button>
+        </div>
+        <div class="loading" id="loadingStatus">📦 ЗАГРУЗКА СПРАЙТОВ...</div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadingDiv = document.getElementById('loadingStatus');
+        
+        // ========== ОТЛАДКА КОЛЛИЗИЙ ==========
+        let debugCollisions = true;  // Включено по умолчанию, чтобы вы видели зоны
+        
+        const debugBtn = document.getElementById('debugToggleBtn');
+        debugBtn.addEventListener('click', () => {
+            debugCollisions = !debugCollisions;
+            debugBtn.textContent = debugCollisions ? "🔴 ВЫКЛЮЧИТЬ ВИД КОЛЛИЗИЙ" : "🟢 ВКЛЮЧИТЬ ВИД КОЛЛИЗИЙ";
+            debugBtn.classList.toggle('active', debugCollisions);
+        });
+
+        // ========== НАСТРОЙКИ ==========
+        const RUN_FRAMES = [
+            "manz/1.png",
+            "manz/2.png",
+            "manz/3.png",
+            "manz/4.png"
+        ];
+        
+        const JUMP_SPRITE = "manz/jump.png";
+        const RIB_SPRITE = "pngtree-roasted-pork-ribs-png-image_13146536.png";
+        
+        // ========== РАЗДЕЛЬНЫЕ НАСТРОЙКИ РАЗМЕРОВ ==========
+        // 🎨 РАЗМЕРЫ ДЛЯ РИСОВАНИЯ (как визуально выглядит)
+        const PLAYER_DRAW_WIDTH = 80;    // Ширина отрисовки
+        const PLAYER_DRAW_HEIGHT = 96;   // Высота отрисовки
+        
+        // 🎯 РАЗМЕРЫ ДЛЯ СТОЛКНОВЕНИЯ (НАСТРАИВАЙТЕ ЭТИ ЦИФРЫ!)
+        const PLAYER_HITBOX_WIDTH = 35;    // ← МЕНЯЙТЕ ЭТО (зона столкновения по ширине)
+        const PLAYER_HITBOX_HEIGHT = 85;   // ← МЕНЯЙТЕ ЭТО (зона столкновения по высоте)
+        const PLAYER_HITBOX_OFFSET_X = 10; // ← Сдвиг хитбокса вправо от левого края картинки
+        const PLAYER_HITBOX_OFFSET_Y = 0; // ← Сдвиг хитбокса вниз от верхнего края картинки
+        
+        // 🍖 РАЗМЕРЫ РЁБРЫШЕК ДЛЯ СТОЛКНОВЕНИЯ
+        const RIB_HITBOX_WIDTH = 40;       // ← Ширина зоны столкновения рёбрышек
+        const RIB_HITBOX_HEIGHT = 40;      // ← Высота зоны столкновения рёбрышек
+        const RIB_HITBOX_OFFSET_X = 12;    // ← Сдвиг хитбокса рёбрышек вправо
+        const RIB_HITBOX_OFFSET_Y = -2;    // ← Сдвиг хитбокса рёбрышек вниз
+        
+        // ========== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ==========
+        let runImages = [];
+        let jumpImage = null;
+        let ribImage = null;
+        let loadedCount = 0;
+        let totalToLoad = RUN_FRAMES.length + 2;
+        
+        function imageLoaded() {
+            loadedCount++;
+            loadingDiv.innerHTML = `📦 ЗАГРУЖЕНО: ${loadedCount}/${totalToLoad}`;
+            if (loadedCount === totalToLoad) {
+                loadingDiv.innerHTML = "✅ ВСЕ СПРАЙТЫ ЗАГРУЖЕНЫ! 🟢 ЗЕЛЁНЫЙ = ХИТБОКС 🟢";
+                setTimeout(() => { loadingDiv.style.opacity = "0"; }, 3000);
+            }
+        }
+        
+        for (let i = 0; i < RUN_FRAMES.length; i++) {
+            let img = new Image();
+            img.onload = imageLoaded;
+            img.onerror = () => {
+                console.error(`Не загрузился кадр: ${RUN_FRAMES[i]}`);
+                loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${RUN_FRAMES[i]}`;
+                imageLoaded();
+            };
+            img.src = RUN_FRAMES[i];
+            runImages.push(img);
+        }
+        
+        jumpImage = new Image();
+        jumpImage.onload = imageLoaded;
+        jumpImage.onerror = () => {
+            console.error(`Не загрузился прыжок: ${JUMP_SPRITE}`);
+            loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${JUMP_SPRITE}`;
+            imageLoaded();
+        };
+        jumpImage.src = JUMP_SPRITE;
+        
+        ribImage = new Image();
+        ribImage.onload = imageLoaded;
+        ribImage.onerror = () => {
+            console.error(`Не загрузились рёбрышки: ${RIB_SPRITE}`);
+            loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${RIB_SPRITE}`;
+            imageLoaded();
+        };
+        ribImage.src = RIB_SPRITE;
+        
+        // ========== ПАРАМЕТРЫ ИГРЫ ==========
+        const GROUND_Y = 210;
+        const CANVAS_W = 900;
+        
+        let gameRunning = true;
+        let score = 0;
+        let highScore = localStorage.getItem('ribHighScore') ? parseInt(localStorage.getItem('ribHighScore')) : 0;
+        let frame = 0;
+        let speed = 5;
+        
+        let isJumping = false;
+        let yPos = 0;
+        let yVelocity = 0;
+        const GRAVITY = 0.65;
+        const JUMP_POWER = -12;
+        
+        let currentRunFrame = 0;
+        let frameCounter = 0;
+        let pendingJump = false;
+        let obstacles = [];
+        
+        // Класс препятствия с раздельными размерами для отрисовки и коллизии
+        class Ribs {
+            constructor(xPos) {
+                this.x = xPos;
+                this.drawWidth = 64;
+                this.drawHeight = 64;
+                // Размеры для коллизии
+                this.hitboxWidth = RIB_HITBOX_WIDTH;
+                this.hitboxHeight = RIB_HITBOX_HEIGHT;
+                this.hitboxOffsetX = RIB_HITBOX_OFFSET_X;
+                this.hitboxOffsetY = RIB_HITBOX_OFFSET_Y;
+                this.passed = false;
+            }
+            draw() {
+                if (ribImage.complete && ribImage.naturalWidth > 0) {
+                    ctx.drawImage(ribImage, this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
+                } else {
+                    ctx.fillStyle = "#ffaa66";
+                    ctx.fillRect(this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
+                    ctx.fillStyle = "#cc8844";
+                    ctx.fillRect(this.x+5, GROUND_Y - this.drawHeight + 5, 22, 8);
+                }
+                
+                // ОТЛАДКА: показываем красный хитбокс рёбрышек
+                if (debugCollisions) {
+                    const hitbox = this.getHitboxRect();
+                    ctx.save();
+                    ctx.strokeStyle = "#ff0000";
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
+                    ctx.strokeRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
+                    // Пишем размеры
+                    ctx.font = "10px monospace";
+                    ctx.fillStyle = "#ff0000";
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(`${hitbox.w}x${hitbox.h}`, hitbox.x, hitbox.y - 2);
+                    ctx.restore();
+                }
+            }
+            update() {
+                this.x -= speed;
+            }
+            getHitboxRect() {
+                return {
+                    x: this.x + this.hitboxOffsetX,
+                    y: GROUND_Y - this.hitboxHeight + this.hitboxOffsetY,
+                    w: this.hitboxWidth,
+                    h: this.hitboxHeight
+                };
+            }
+        }
+        
+        function updateHighScoreUI() {
+            document.getElementById('highScoreValue').innerText = highScore;
+        }
+        updateHighScoreUI();
+        
+        function setHighScoreIfNeeded() {
+            if(score > highScore) {
+                highScore = score;
+                localStorage.setItem('ribHighScore', highScore);
+                updateHighScoreUI();
+            }
+        }
+        
+        // ПОЛУЧИТЬ ХИТБОКС ПЕРСОНАЖА (зелёный прямоугольник)
+        function getPlayerHitbox() {
+            const playerX = 70 + PLAYER_HITBOX_OFFSET_X;
+            const playerY = GROUND_Y + yPos - PLAYER_HITBOX_HEIGHT + PLAYER_HITBOX_OFFSET_Y;
+            return {
+                x: playerX,
+                y: playerY,
+                w: PLAYER_HITBOX_WIDTH,
+                h: PLAYER_HITBOX_HEIGHT
+            };
+        }
+        
+        // Рисование бегущего человека
+        function drawPlayer() {
+            const x = 70;
+            const y = GROUND_Y + yPos - PLAYER_DRAW_HEIGHT + 8;
+            
+            let imgToDraw = null;
+            
+            if (isJumping) {
+                imgToDraw = jumpImage;
+            } else {
+                if (runImages.length > 0 && runImages[currentRunFrame] && runImages[currentRunFrame].complete) {
+                    imgToDraw = runImages[currentRunFrame];
+                } else if (runImages.length > 0) {
+                    imgToDraw = runImages[0];
+                }
+            }
+            
+            if (imgToDraw && imgToDraw.complete && imgToDraw.naturalWidth > 0) {
+                ctx.drawImage(imgToDraw, x, y, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
+            } else {
+                ctx.fillStyle = "#ffcc88";
+                ctx.fillRect(x, y, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(x+10, y+10, 8, 8);
+            }
+            
+            // ОТЛАДКА: показываем зелёный хитбокс персонажа
+            if (debugCollisions) {
+                const hitbox = getPlayerHitbox();
+                ctx.save();
+                ctx.strokeStyle = "#00ff00";
+                ctx.fillStyle = "rgba(0, 255, 0, 0.25)";
+                ctx.lineWidth = 2;
+                ctx.fillRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
+                ctx.strokeRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
+                // Пишем размеры и позицию
+                ctx.font = "10px monospace";
+                ctx.fillStyle = "#00ff00";
+                ctx.shadowBlur = 0;
+                ctx.fillText(`Хитбокс ${hitbox.w}x${hitbox.h}`, hitbox.x, hitbox.y - 5);
+                ctx.fillText(`Y:${Math.floor(hitbox.y)}`, hitbox.x, hitbox.y - 15);
+                ctx.restore();
+            }
+            
+            // Тень
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.beginPath();
+            ctx.ellipse(x+20, GROUND_Y + yPos + 5, 18, 6, 0, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        function spawnObstacle() {
+            let dynamicGap = Math.max(70, 140 - Math.floor(speed * 3));
+            if (obstacles.length === 0) {
+                obstacles.push(new Ribs(CANVAS_W));
+            } else {
+                let last = obstacles[obstacles.length-1];
+                if (last.x < CANVAS_W - dynamicGap) {
+                    obstacles.push(new Ribs(CANVAS_W));
+                }
+            }
+        }
+        
+        function checkCollision() {
+            const playerBox = getPlayerHitbox();
+            
+            for(let obs of obstacles) {
+                const obsBox = obs.getHitboxRect();
+                if (playerBox.x < obsBox.x + obsBox.w &&
+                    playerBox.x + playerBox.w > obsBox.x &&
+                    playerBox.y < obsBox.y + obsBox.h &&
+                    playerBox.y + playerBox.h > obsBox.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function updateGame() {
+            if(!gameRunning) return;
+            
+            if(pendingJump && !isJumping && yPos === 0) {
+                isJumping = true;
+                yVelocity = JUMP_POWER;
+            }
+            pendingJump = false;
+            
+            if(isJumping) {
+                yPos += yVelocity;
+                yVelocity += GRAVITY;
+                if(yPos >= 0) {
+                    yPos = 0;
+                    isJumping = false;
+                    yVelocity = 0;
+                }
+            }
+            
+            if(!isJumping && gameRunning && runImages.length > 0) {
+                frameCounter++;
+                if(frameCounter > 5) {
+                    frameCounter = 0;
+                    currentRunFrame = (currentRunFrame + 1) % runImages.length;
+                }
+            }
+            
+            for(let i=0; i<obstacles.length; i++) {
+                const obs = obstacles[i];
+                obs.update();
+                if(obs.x + obs.drawWidth < 0) {
+                    obstacles.splice(i,1);
+                    i--;
+                    score += 15;
+                    document.getElementById('scoreValue').innerText = Math.floor(score);
+                    setHighScoreIfNeeded();
+                    continue;
+                }
+                if(!obs.passed && obs.x + obs.drawWidth/2 < 70) {
+                    obs.passed = true;
+                    score += 10;
+                    document.getElementById('scoreValue').innerText = Math.floor(score);
+                    setHighScoreIfNeeded();
+                }
+            }
+            
+            let targetSpeed = 5 + Math.floor(score / 300);
+            if(targetSpeed > 14) targetSpeed = 14;
+            if(speed < targetSpeed) speed += 0.02;
+            
+            let spawnRate = Math.max(55, 110 - Math.floor(speed * 2.5));
+            if(frame % Math.floor(spawnRate) === 0 && obstacles.length < 3) {
+                if(Math.random() < 0.55) spawnObstacle();
+            }
+            
+            if(checkCollision()) {
+                gameRunning = false;
+                document.getElementById('gameStatusText').innerHTML = "💀 ПОТРАЧЕНО... НАЧНИ ЗАНОВО 💀";
+                return;
+            }
+            
+            if(frame % 60 === 0) {
+                score += 2;
+                document.getElementById('scoreValue').innerText = Math.floor(score);
+                setHighScoreIfNeeded();
+            }
+            
+            frame++;
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, CANVAS_W, 250);
+            
+            const grad = ctx.createLinearGradient(0, 0, 0, 150);
+            grad.addColorStop(0, "#87CEEB");
+            grad.addColorStop(1, "#B0E0FF");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, CANVAS_W, GROUND_Y);
+            
+            ctx.fillStyle = "#8B6914";
+            ctx.fillRect(0, GROUND_Y-4, CANVAS_W, 6);
+            ctx.fillStyle = "#6B4E0A";
+            ctx.fillRect(0, GROUND_Y-2, CANVAS_W, 4);
+            ctx.fillStyle = "#D2A64A";
+            ctx.fillRect(0, GROUND_Y-1, CANVAS_W, 3);
+            
+            ctx.fillStyle = "#5C9E3A";
+            for(let i=0; i<20; i++) {
+                ctx.fillRect(10 + i*45 + (frame*0.5)%45, GROUND_Y-8, 3, 6);
+            }
+            
+            for(let obs of obstacles) obs.draw();
+            drawPlayer();
+            
+            // Дополнительная подсказка при включённой отладке
+            if (debugCollisions) {
+                ctx.font = "12px monospace";
+                ctx.fillStyle = "#ffffff";
+                ctx.shadowBlur = 2;
+                ctx.fillText("🟢 ЗЕЛЁНЫЙ = зона удара персонажа | 🔴 КРАСНЫЙ = зона рёбрышек", 10, 30);
+                ctx.fillText("📐 Настройте PLAYER_HITBOX_... и RIB_HITBOX_... в коде", 10, 50);
+            }
+            
+            if(!gameRunning) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(0, 0, CANVAS_W, 250);
+                ctx.font = "bold 28px 'Courier New'";
+                ctx.fillStyle = "#ffaa66";
+                ctx.fillText("🍖 GAME OVER 🍖", CANVAS_W/2-120, 120);
+            }
+            
+            ctx.font = "bold 20px 'Courier New'";
+            ctx.fillStyle = "#2c1a0a";
+            ctx.fillText("🍖 "+Math.floor(score), CANVAS_W-80, 35);
+        }
+        
+        function restartGame() {
+            gameRunning = true;
+            score = 0;
+            speed = 5;
+            obstacles = [];
+            isJumping = false;
+            yPos = 0;
+            yVelocity = 0;
+            frame = 0;
+            pendingJump = false;
+            document.getElementById('scoreValue').innerText = "0";
+            document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ!";
+            updateHighScoreUI();
+        }
+        
+        function jump() {
+            if (!gameRunning) return;
+            if (!isJumping && yPos === 0) {
+                pendingJump = true;
+                document.getElementById('gameStatusText').innerHTML = "🍖 ПРЫЖОК! 🍖";
+                setTimeout(() => {
+                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ!";
+                }, 300);
+            }
+        }
+        
+        // ========== УПРАВЛЕНИЕ ==========
+        document.getElementById('jumpButton').addEventListener('click', () => jump());
+        document.getElementById('jumpButton').addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+        canvas.addEventListener('click', () => jump());
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') {
+                e.preventDefault();
+                jump();
+            }
+            if (e.key === 'r' || e.key === 'R') restartGame();
+        });
+        
+        document.getElementById('restartButton').addEventListener('click', () => restartGame());
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') e.preventDefault();
+        });
+        
+        restartGame();
+        
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+        
+        console.log("ОТЛАДКА ВКЛЮЧЕНА! 🟢 Зелёный = хитбокс персонажа, 🔴 Красный = хитбокс рёбрышек");
+        console.log("Настройте эти параметры в коде:");
+        console.log("  PLAYER_HITBOX_WIDTH, PLAYER_HITBOX_HEIGHT");
+        console.log("  PLAYER_HITBOX_OFFSET_X, PLAYER_HITBOX_OFFSET_Y");
+        console.log("  RIB_HITBOX_WIDTH, RIB_HITBOX_HEIGHT");
+        console.log("  RIB_HITBOX_OFFSET_X, RIB_HITBOX_OFFSET_Y");
+    })();
+</script>
+</body>
+</html>
