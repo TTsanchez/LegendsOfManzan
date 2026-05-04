@@ -12,7 +12,7 @@
         }
 
         body {
-            background: linear-gradient(145deg, #1a472a 0%, #0d2818 100%);
+            background: linear-gradient(145deg, #1a1a1a 0%, #000000 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -25,7 +25,7 @@
         .game-container {
             background: #2c2c28;
             border-radius: clamp(16px, 5vw, 32px);
-            box-shadow: 0 25px 40px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1);
+            box-shadow: 0 25px 40px rgba(0,0,0,0.3);
             padding: clamp(12px, 3vw, 25px);
             width: 100%;
             max-width: 1000px;
@@ -44,7 +44,6 @@
             border-radius: clamp(12px, 4vw, 18px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
             cursor: pointer;
-            background: #87CEEB;
         }
 
         .info-panel {
@@ -80,8 +79,6 @@
             border-radius: 40px;
             color: white;
             cursor: pointer;
-            transition: transform 0.05s ease;
-            white-space: nowrap;
         }
         .restart-btn:active {
             transform: scale(0.95);
@@ -120,7 +117,6 @@
             cursor: pointer;
             margin-top: 15px;
             width: 100%;
-            transition: transform 0.05s ease;
         }
         .jump-test-btn:active {
             transform: scale(0.97);
@@ -133,7 +129,6 @@
             margin-top: 10px;
         }
 
-        /* Для очень маленьких экранов */
         @media (max-width: 550px) {
             body {
                 padding: 5px;
@@ -145,13 +140,6 @@
             .score-box, .high-box {
                 white-space: normal;
                 text-align: center;
-            }
-        }
-
-        /* Для планшетов и выше */
-        @media (min-width: 768px) {
-            .game-container {
-                padding: 25px;
             }
         }
     </style>
@@ -167,11 +155,11 @@
             <div class="high-box"><span>🏆 BEST</span> <span id="highScoreValue">0</span></div>
             <button class="restart-btn" id="restartButton">▶ НОВАЯ ИГРА</button>
         </div>
-        <div class="status" id="gameStatusText">🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖</div>
+        <div class="status" id="gameStatusText">🥖 БЕГИ! НЕ ЕШЬ ЭТО!</div>
         <div class="controls-hint">
-            🍖 ПРОБЕЛ / СТРЕЛКА ВВЕРХ / КЛИК / КНОПКА ВНИЗУ — ПРЫЖОК 🍖
+            🥐 ПРОБЕЛ / СТРЕЛКА ВВЕРХ / КЛИК / КНОПКА — ПРЫЖОК
         </div>
-        <button class="jump-test-btn" id="jumpButton">🍖 ПРЫЖОК 🍖</button>
+        <button class="jump-test-btn" id="jumpButton">⚽ ПРЫЖОК ⚽</button>
         <div class="loading" id="loadingStatus">📦 ЗАГРУЗКА СПРАЙТОВ...</div>
     </div>
 </div>
@@ -182,7 +170,6 @@
         const ctx = canvas.getContext('2d');
         const loadingDiv = document.getElementById('loadingStatus');
         
-        // ========== НАСТРОЙКИ ==========
         const RUN_FRAMES = [
             "manz/1.png",
             "manz/2.png",
@@ -193,16 +180,26 @@
         const JUMP_SPRITE = "manz/jump.png";
         const RIB_SPRITE = "pngtree-roasted-pork-ribs-png-image_13146536.png";
         
-        // ========== РАЗМЕРЫ (в пикселях оригинального канваса 900x250) ==========
+        const PARIS_BG_IMAGE = "fonwall.ru-eiffel-tower-paris-france-eyfeleva-bashnya-vvps.jpg";
+        
+        let parisBackground = new Image();
+        let backgroundLoaded = false;
+        
+        parisBackground.onload = () => {
+            backgroundLoaded = true;
+        };
+        parisBackground.onerror = () => {
+            backgroundLoaded = false;
+        };
+        parisBackground.src = PARIS_BG_IMAGE;
+        
         const ORIGINAL_WIDTH = 900;
         const ORIGINAL_HEIGHT = 250;
         const GROUND_Y = 210;
         
-        // Размеры персонажа
         const PLAYER_DRAW_WIDTH = 80;
         const PLAYER_DRAW_HEIGHT = 96;
         
-        // Размеры для столкновения
         const PLAYER_HITBOX_WIDTH = 35;
         const PLAYER_HITBOX_HEIGHT = 85;
         const PLAYER_HITBOX_OFFSET_X = 10;
@@ -213,7 +210,6 @@
         const RIB_HITBOX_OFFSET_X = 12;
         const RIB_HITBOX_OFFSET_Y = -2;
         
-        // ========== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ==========
         let runImages = [];
         let jumpImage = null;
         let ribImage = null;
@@ -224,7 +220,7 @@
             loadedCount++;
             loadingDiv.innerHTML = `📦 ЗАГРУЖЕНО: ${loadedCount}/${totalToLoad}`;
             if (loadedCount === totalToLoad) {
-                loadingDiv.innerHTML = "✅ ИГРА ГОТОВА! ✅";
+                loadingDiv.innerHTML = "✅";
                 setTimeout(() => { loadingDiv.style.opacity = "0"; }, 2000);
             }
         }
@@ -232,31 +228,21 @@
         for (let i = 0; i < RUN_FRAMES.length; i++) {
             let img = new Image();
             img.onload = imageLoaded;
-            img.onerror = () => {
-                console.error(`Не загрузился кадр: ${RUN_FRAMES[i]}`);
-                imageLoaded();
-            };
+            img.onerror = () => { imageLoaded(); };
             img.src = RUN_FRAMES[i];
             runImages.push(img);
         }
         
         jumpImage = new Image();
         jumpImage.onload = imageLoaded;
-        jumpImage.onerror = () => {
-            console.error(`Не загрузился прыжок: ${JUMP_SPRITE}`);
-            imageLoaded();
-        };
+        jumpImage.onerror = () => { imageLoaded(); };
         jumpImage.src = JUMP_SPRITE;
         
         ribImage = new Image();
         ribImage.onload = imageLoaded;
-        ribImage.onerror = () => {
-            console.error(`Не загрузились рёбрышки: ${RIB_SPRITE}`);
-            imageLoaded();
-        };
+        ribImage.onerror = () => { imageLoaded(); };
         ribImage.src = RIB_SPRITE;
         
-        // ========== ПАРАМЕТРЫ ИГРЫ ==========
         let gameRunning = true;
         let score = 0;
         let highScore = localStorage.getItem('ribHighScore') ? parseInt(localStorage.getItem('ribHighScore')) : 0;
@@ -274,36 +260,76 @@
         let pendingJump = false;
         let obstacles = [];
         
-        // Класс препятствия
-        class Ribs {
-            constructor(xPos) {
-                this.x = xPos;
-                this.drawWidth = 64;
-                this.drawHeight = 64;
-                this.hitboxWidth = RIB_HITBOX_WIDTH;
-                this.hitboxHeight = RIB_HITBOX_HEIGHT;
-                this.hitboxOffsetX = RIB_HITBOX_OFFSET_X;
-                this.hitboxOffsetY = RIB_HITBOX_OFFSET_Y;
-                this.passed = false;
+        let cloudPositions = [
+            { x: 120, y: 45, size: 35 },
+            { x: 350, y: 65, size: 28 },
+            { x: 600, y: 35, size: 40 },
+            { x: 800, y: 55, size: 30 }
+        ];
+        
+        let eiffelX = 750;
+        
+        function drawFootballField() {
+            ctx.fillStyle = "#1a5c1a";
+            ctx.fillRect(0, GROUND_Y - 15, ORIGINAL_WIDTH, 20);
+            
+            ctx.fillStyle = "#2a7a2a";
+            for(let i = 0; i < 12; i++) {
+                let offset = 30 + i*75 - (frame * 0.5) % 75;
+                ctx.fillRect(offset, GROUND_Y - 12, 4, 8);
             }
-            draw() {
-                if (ribImage.complete && ribImage.naturalWidth > 0) {
-                    ctx.drawImage(ribImage, this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
-                } else {
-                    ctx.fillStyle = "#ffaa66";
-                    ctx.fillRect(this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
+            
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y - 5);
+            ctx.lineTo(ORIGINAL_WIDTH, GROUND_Y - 5);
+            ctx.stroke();
+        }
+        
+        function drawParisBackground() {
+            if (backgroundLoaded && parisBackground.complete && parisBackground.naturalWidth > 0) {
+                ctx.drawImage(parisBackground, 0, 0, ORIGINAL_WIDTH, GROUND_Y - 10);
+            } else {
+                const grad = ctx.createLinearGradient(0, 0, 0, 150);
+                grad.addColorStop(0, "#FFB347");
+                grad.addColorStop(0.5, "#FF8C42");
+                grad.addColorStop(1, "#E8734A");
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, ORIGINAL_WIDTH, GROUND_Y - 10);
+                
+                ctx.fillStyle = "rgba(255, 240, 210, 0.85)";
+                for (let cloud of cloudPositions) {
+                    ctx.beginPath();
+                    ctx.ellipse(cloud.x, cloud.y, cloud.size, cloud.size * 0.6, 0, 0, Math.PI*2);
+                    ctx.ellipse(cloud.x + cloud.size*0.7, cloud.y - 5, cloud.size*0.7, cloud.size*0.5, 0, 0, Math.PI*2);
+                    ctx.fill();
                 }
-            }
-            update() {
-                this.x -= speed;
-            }
-            getHitboxRect() {
-                return {
-                    x: this.x + this.hitboxOffsetX,
-                    y: GROUND_Y - this.hitboxHeight + this.hitboxOffsetY,
-                    w: this.hitboxWidth,
-                    h: this.hitboxHeight
-                };
+                
+                ctx.fillStyle = "#4A3728";
+                ctx.beginPath();
+                ctx.moveTo(eiffelX, GROUND_Y - 15);
+                ctx.lineTo(eiffelX + 14, GROUND_Y - 70);
+                ctx.lineTo(eiffelX - 14, GROUND_Y - 70);
+                ctx.fill();
+                ctx.fillStyle = "#5C3D2E";
+                ctx.fillRect(eiffelX - 7, GROUND_Y - 100, 14, 85);
+                ctx.fillStyle = "#6B4A38";
+                ctx.fillRect(eiffelX - 16, GROUND_Y - 100, 32, 4);
+                ctx.fillRect(eiffelX - 12, GROUND_Y - 125, 24, 3);
+                ctx.fillRect(eiffelX - 8, GROUND_Y - 145, 16, 3);
+                ctx.beginPath();
+                ctx.moveTo(eiffelX, GROUND_Y - 165);
+                ctx.lineTo(eiffelX - 3, GROUND_Y - 148);
+                ctx.lineTo(eiffelX + 3, GROUND_Y - 148);
+                ctx.fill();
+                
+                ctx.fillStyle = "#0055A4";
+                ctx.fillRect(eiffelX + 12, GROUND_Y - 105, 4, 12);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(eiffelX + 16, GROUND_Y - 105, 4, 12);
+                ctx.fillStyle = "#EF4135";
+                ctx.fillRect(eiffelX + 20, GROUND_Y - 105, 4, 12);
             }
         }
         
@@ -354,11 +380,42 @@
                 ctx.fillRect(x, y, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
             }
             
-            // Тень
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
             ctx.beginPath();
-            ctx.ellipse(x+20, GROUND_Y + yPos + 5, 18, 6, 0, 0, Math.PI*2);
+            ctx.ellipse(x+25, GROUND_Y + yPos + 6, 22, 6, 0, 0, Math.PI*2);
             ctx.fill();
+        }
+        
+        class Ribs {
+            constructor(xPos) {
+                this.x = xPos;
+                this.drawWidth = 64;
+                this.drawHeight = 64;
+                this.hitboxWidth = RIB_HITBOX_WIDTH;
+                this.hitboxHeight = RIB_HITBOX_HEIGHT;
+                this.hitboxOffsetX = RIB_HITBOX_OFFSET_X;
+                this.hitboxOffsetY = RIB_HITBOX_OFFSET_Y;
+                this.passed = false;
+            }
+            draw() {
+                if (ribImage.complete && ribImage.naturalWidth > 0) {
+                    ctx.drawImage(ribImage, this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
+                } else {
+                    ctx.fillStyle = "#ffaa66";
+                    ctx.fillRect(this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
+                }
+            }
+            update() {
+                this.x -= speed;
+            }
+            getHitboxRect() {
+                return {
+                    x: this.x + this.hitboxOffsetX,
+                    y: GROUND_Y - this.hitboxHeight + this.hitboxOffsetY,
+                    w: this.hitboxWidth,
+                    h: this.hitboxHeight
+                };
+            }
         }
         
         function spawnObstacle() {
@@ -375,7 +432,6 @@
         
         function checkCollision() {
             const playerBox = getPlayerHitbox();
-            
             for(let obs of obstacles) {
                 const obsBox = obs.getHitboxRect();
                 if (playerBox.x < obsBox.x + obsBox.w &&
@@ -445,7 +501,7 @@
             
             if(checkCollision()) {
                 gameRunning = false;
-                document.getElementById('gameStatusText').innerHTML = "💀 ПОТРАЧЕНО... НАЧНИ ЗАНОВО 💀";
+                document.getElementById('gameStatusText').innerHTML = "💀 GAME OVER 💀";
                 return;
             }
             
@@ -456,36 +512,21 @@
             }
             
             frame++;
+            
+            for (let cloud of cloudPositions) {
+                cloud.x += 0.3;
+                if (cloud.x > ORIGINAL_WIDTH + 50) cloud.x = -80;
+            }
+            eiffelX = 750 + Math.sin(frame * 0.02) * 1;
         }
         
         function draw() {
             ctx.clearRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
             
-            // Небо
-            const grad = ctx.createLinearGradient(0, 0, 0, 150);
-            grad.addColorStop(0, "#87CEEB");
-            grad.addColorStop(1, "#B0E0FF");
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, ORIGINAL_WIDTH, GROUND_Y);
+            drawParisBackground();
+            drawFootballField();
             
-            // Земля
-            ctx.fillStyle = "#8B6914";
-            ctx.fillRect(0, GROUND_Y-4, ORIGINAL_WIDTH, 6);
-            ctx.fillStyle = "#6B4E0A";
-            ctx.fillRect(0, GROUND_Y-2, ORIGINAL_WIDTH, 4);
-            ctx.fillStyle = "#D2A64A";
-            ctx.fillRect(0, GROUND_Y-1, ORIGINAL_WIDTH, 3);
-            
-            // Травка
-            ctx.fillStyle = "#5C9E3A";
-            for(let i=0; i<20; i++) {
-                ctx.fillRect(10 + i*45 + (frame*0.5)%45, GROUND_Y-8, 3, 6);
-            }
-            
-            // Рёбрышки
             for(let obs of obstacles) obs.draw();
-            
-            // Игрок
             drawPlayer();
             
             if(!gameRunning) {
@@ -493,12 +534,17 @@
                 ctx.fillRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
                 ctx.font = "bold 28px 'Courier New'";
                 ctx.fillStyle = "#ffaa66";
-                ctx.fillText("🍖 GAME OVER 🍖", ORIGINAL_WIDTH/2-120, 120);
+                ctx.fillText("🍖 GAME OVER 🥖", ORIGINAL_WIDTH/2-130, 110);
+                ctx.font = "16px monospace";
+                ctx.fillStyle = "#ffaa66";
+                ctx.fillText("Нажмите «НОВАЯ ИГРА»", ORIGINAL_WIDTH/2-110, 150);
             }
             
-            ctx.font = "bold 20px 'Courier New'";
-            ctx.fillStyle = "#2c1a0a";
-            ctx.fillText("🍖 "+Math.floor(score), ORIGINAL_WIDTH-80, 35);
+            ctx.font = "bold 22px 'Courier New'";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 2;
+            ctx.fillText("🍖 "+Math.floor(score), ORIGINAL_WIDTH-85, 38);
+            ctx.shadowBlur = 0;
         }
         
         function restartGame() {
@@ -512,7 +558,7 @@
             frame = 0;
             pendingJump = false;
             document.getElementById('scoreValue').innerText = "0";
-            document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖";
+            document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
             updateHighScoreUI();
         }
         
@@ -520,14 +566,13 @@
             if (!gameRunning) return;
             if (!isJumping && yPos === 0) {
                 pendingJump = true;
-                document.getElementById('gameStatusText').innerHTML = "🍖 ПРЫЖОК! 🍖";
+                document.getElementById('gameStatusText').innerHTML = "⚽ ПРЫЖОК! ⚽";
                 setTimeout(() => {
-                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖";
-                }, 300);
+                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
+                }, 400);
             }
         }
         
-        // ========== УПРАВЛЕНИЕ ==========
         document.getElementById('jumpButton').addEventListener('click', () => jump());
         document.getElementById('jumpButton').addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
         canvas.addEventListener('click', () => jump());
