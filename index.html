@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Бегун | Человек + Свиные рёбрышки | ОТЛАДКА КОЛЛИЗИЙ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LegendsOfManzan</title>
     <style>
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
         }
 
         body {
@@ -18,20 +19,29 @@
             min-height: 100vh;
             font-family: 'Courier New', 'Lucida Sans Typewriter', monospace;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
         }
 
         .game-container {
             background: #2c2c28;
-            border-radius: 32px;
+            border-radius: clamp(16px, 5vw, 32px);
             box-shadow: 0 25px 40px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1);
-            padding: 20px 25px 25px 25px;
+            padding: clamp(12px, 3vw, 25px);
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 900 / 250;
         }
 
         canvas {
             display: block;
-            margin: 0 auto;
-            border-radius: 18px;
+            width: 100%;
+            height: 100%;
+            border-radius: clamp(12px, 4vw, 18px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
             cursor: pointer;
             background: #87CEEB;
@@ -40,21 +50,24 @@
         .info-panel {
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             margin-top: 18px;
             margin-bottom: 8px;
             font-weight: bold;
-            font-size: 1.3rem;
+            font-size: clamp(0.9rem, 4vw, 1.3rem);
             background: #1a1a1a;
             color: #ffd966;
-            padding: 8px 20px;
+            padding: 8px clamp(12px, 4vw, 20px);
             border-radius: 60px;
         }
 
         .score-box, .high-box {
             background: #000000;
-            padding: 5px 16px;
+            padding: 5px clamp(12px, 3vw, 16px);
             border-radius: 40px;
+            white-space: nowrap;
         }
 
         .restart-btn {
@@ -62,11 +75,13 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 1.1rem;
-            padding: 6px 20px;
+            font-size: clamp(0.8rem, 3.5vw, 1.1rem);
+            padding: 6px clamp(12px, 3vw, 20px);
             border-radius: 40px;
             color: white;
             cursor: pointer;
+            transition: transform 0.05s ease;
+            white-space: nowrap;
         }
         .restart-btn:active {
             transform: scale(0.95);
@@ -80,10 +95,11 @@
             border-radius: 40px;
             font-weight: bold;
             color: #ffaa66;
+            font-size: clamp(0.7rem, 3vw, 0.9rem);
         }
 
         .controls-hint {
-            font-size: 0.75rem;
+            font-size: clamp(0.6rem, 2.5vw, 0.75rem);
             margin-top: 10px;
             text-align: center;
             color: #ccaaff;
@@ -97,13 +113,14 @@
             border: none;
             font-family: inherit;
             font-weight: bold;
-            font-size: 1.2rem;
-            padding: 10px 25px;
+            font-size: clamp(0.9rem, 4vw, 1.2rem);
+            padding: 10px clamp(15px, 5vw, 25px);
             border-radius: 50px;
             color: white;
             cursor: pointer;
             margin-top: 15px;
             width: 100%;
+            transition: transform 0.05s ease;
         }
         .jump-test-btn:active {
             transform: scale(0.97);
@@ -112,33 +129,39 @@
         .loading {
             text-align: center;
             color: yellow;
-            font-size: 12px;
+            font-size: clamp(10px, 3vw, 12px);
             margin-top: 10px;
         }
 
-        .debug-toggle {
-            margin-top: 10px;
-            text-align: center;
+        /* Для очень маленьких экранов */
+        @media (max-width: 550px) {
+            body {
+                padding: 5px;
+            }
+            .info-panel {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .score-box, .high-box {
+                white-space: normal;
+                text-align: center;
+            }
         }
-        .debug-btn {
-            background: #444;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 20px;
-            color: white;
-            cursor: pointer;
-            font-family: monospace;
-            font-size: 12px;
-        }
-        .debug-btn.active {
-            background: #00aa00;
+
+        /* Для планшетов и выше */
+        @media (min-width: 768px) {
+            .game-container {
+                padding: 25px;
+            }
         }
     </style>
 </head>
 <body>
 <div>
     <div class="game-container">
-        <canvas id="gameCanvas" width="900" height="250"></canvas>
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="250"></canvas>
+        </div>
         <div class="info-panel">
             <div class="score-box"><span>🍖 SCORE</span> <span id="scoreValue">0</span></div>
             <div class="high-box"><span>🏆 BEST</span> <span id="highScoreValue">0</span></div>
@@ -149,9 +172,6 @@
             🍖 ПРОБЕЛ / СТРЕЛКА ВВЕРХ / КЛИК / КНОПКА ВНИЗУ — ПРЫЖОК 🍖
         </div>
         <button class="jump-test-btn" id="jumpButton">🍖 ПРЫЖОК 🍖</button>
-        <div class="debug-toggle">
-            <button id="debugToggleBtn" class="debug-btn active">🔴 ВКЛЮЧИТЬ ВИД КОЛЛИЗИЙ</button>
-        </div>
         <div class="loading" id="loadingStatus">📦 ЗАГРУЗКА СПРАЙТОВ...</div>
     </div>
 </div>
@@ -162,16 +182,6 @@
         const ctx = canvas.getContext('2d');
         const loadingDiv = document.getElementById('loadingStatus');
         
-        // ========== ОТЛАДКА КОЛЛИЗИЙ ==========
-        let debugCollisions = true;  // Включено по умолчанию, чтобы вы видели зоны
-        
-        const debugBtn = document.getElementById('debugToggleBtn');
-        debugBtn.addEventListener('click', () => {
-            debugCollisions = !debugCollisions;
-            debugBtn.textContent = debugCollisions ? "🔴 ВЫКЛЮЧИТЬ ВИД КОЛЛИЗИЙ" : "🟢 ВКЛЮЧИТЬ ВИД КОЛЛИЗИЙ";
-            debugBtn.classList.toggle('active', debugCollisions);
-        });
-
         // ========== НАСТРОЙКИ ==========
         const RUN_FRAMES = [
             "manz/1.png",
@@ -183,22 +193,25 @@
         const JUMP_SPRITE = "manz/jump.png";
         const RIB_SPRITE = "pngtree-roasted-pork-ribs-png-image_13146536.png";
         
-        // ========== РАЗДЕЛЬНЫЕ НАСТРОЙКИ РАЗМЕРОВ ==========
-        // 🎨 РАЗМЕРЫ ДЛЯ РИСОВАНИЯ (как визуально выглядит)
-        const PLAYER_DRAW_WIDTH = 80;    // Ширина отрисовки
-        const PLAYER_DRAW_HEIGHT = 96;   // Высота отрисовки
+        // ========== РАЗМЕРЫ (в пикселях оригинального канваса 900x250) ==========
+        const ORIGINAL_WIDTH = 900;
+        const ORIGINAL_HEIGHT = 250;
+        const GROUND_Y = 210;
         
-        // 🎯 РАЗМЕРЫ ДЛЯ СТОЛКНОВЕНИЯ (НАСТРАИВАЙТЕ ЭТИ ЦИФРЫ!)
-        const PLAYER_HITBOX_WIDTH = 35;    // ← МЕНЯЙТЕ ЭТО (зона столкновения по ширине)
-        const PLAYER_HITBOX_HEIGHT = 85;   // ← МЕНЯЙТЕ ЭТО (зона столкновения по высоте)
-        const PLAYER_HITBOX_OFFSET_X = 10; // ← Сдвиг хитбокса вправо от левого края картинки
-        const PLAYER_HITBOX_OFFSET_Y = 0; // ← Сдвиг хитбокса вниз от верхнего края картинки
+        // Размеры персонажа
+        const PLAYER_DRAW_WIDTH = 80;
+        const PLAYER_DRAW_HEIGHT = 96;
         
-        // 🍖 РАЗМЕРЫ РЁБРЫШЕК ДЛЯ СТОЛКНОВЕНИЯ
-        const RIB_HITBOX_WIDTH = 40;       // ← Ширина зоны столкновения рёбрышек
-        const RIB_HITBOX_HEIGHT = 40;      // ← Высота зоны столкновения рёбрышек
-        const RIB_HITBOX_OFFSET_X = 12;    // ← Сдвиг хитбокса рёбрышек вправо
-        const RIB_HITBOX_OFFSET_Y = -2;    // ← Сдвиг хитбокса рёбрышек вниз
+        // Размеры для столкновения
+        const PLAYER_HITBOX_WIDTH = 35;
+        const PLAYER_HITBOX_HEIGHT = 85;
+        const PLAYER_HITBOX_OFFSET_X = 10;
+        const PLAYER_HITBOX_OFFSET_Y = 0;
+        
+        const RIB_HITBOX_WIDTH = 40;
+        const RIB_HITBOX_HEIGHT = 40;
+        const RIB_HITBOX_OFFSET_X = 12;
+        const RIB_HITBOX_OFFSET_Y = -2;
         
         // ========== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ==========
         let runImages = [];
@@ -211,8 +224,8 @@
             loadedCount++;
             loadingDiv.innerHTML = `📦 ЗАГРУЖЕНО: ${loadedCount}/${totalToLoad}`;
             if (loadedCount === totalToLoad) {
-                loadingDiv.innerHTML = "✅ ВСЕ СПРАЙТЫ ЗАГРУЖЕНЫ! 🟢 ЗЕЛЁНЫЙ = ХИТБОКС 🟢";
-                setTimeout(() => { loadingDiv.style.opacity = "0"; }, 3000);
+                loadingDiv.innerHTML = "✅ ИГРА ГОТОВА! ✅";
+                setTimeout(() => { loadingDiv.style.opacity = "0"; }, 2000);
             }
         }
         
@@ -221,7 +234,6 @@
             img.onload = imageLoaded;
             img.onerror = () => {
                 console.error(`Не загрузился кадр: ${RUN_FRAMES[i]}`);
-                loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${RUN_FRAMES[i]}`;
                 imageLoaded();
             };
             img.src = RUN_FRAMES[i];
@@ -232,7 +244,6 @@
         jumpImage.onload = imageLoaded;
         jumpImage.onerror = () => {
             console.error(`Не загрузился прыжок: ${JUMP_SPRITE}`);
-            loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${JUMP_SPRITE}`;
             imageLoaded();
         };
         jumpImage.src = JUMP_SPRITE;
@@ -241,15 +252,11 @@
         ribImage.onload = imageLoaded;
         ribImage.onerror = () => {
             console.error(`Не загрузились рёбрышки: ${RIB_SPRITE}`);
-            loadingDiv.innerHTML = `❌ ОШИБКА: не найден ${RIB_SPRITE}`;
             imageLoaded();
         };
         ribImage.src = RIB_SPRITE;
         
         // ========== ПАРАМЕТРЫ ИГРЫ ==========
-        const GROUND_Y = 210;
-        const CANVAS_W = 900;
-        
         let gameRunning = true;
         let score = 0;
         let highScore = localStorage.getItem('ribHighScore') ? parseInt(localStorage.getItem('ribHighScore')) : 0;
@@ -267,13 +274,12 @@
         let pendingJump = false;
         let obstacles = [];
         
-        // Класс препятствия с раздельными размерами для отрисовки и коллизии
+        // Класс препятствия
         class Ribs {
             constructor(xPos) {
                 this.x = xPos;
                 this.drawWidth = 64;
                 this.drawHeight = 64;
-                // Размеры для коллизии
                 this.hitboxWidth = RIB_HITBOX_WIDTH;
                 this.hitboxHeight = RIB_HITBOX_HEIGHT;
                 this.hitboxOffsetX = RIB_HITBOX_OFFSET_X;
@@ -286,25 +292,6 @@
                 } else {
                     ctx.fillStyle = "#ffaa66";
                     ctx.fillRect(this.x, GROUND_Y - this.drawHeight, this.drawWidth, this.drawHeight);
-                    ctx.fillStyle = "#cc8844";
-                    ctx.fillRect(this.x+5, GROUND_Y - this.drawHeight + 5, 22, 8);
-                }
-                
-                // ОТЛАДКА: показываем красный хитбокс рёбрышек
-                if (debugCollisions) {
-                    const hitbox = this.getHitboxRect();
-                    ctx.save();
-                    ctx.strokeStyle = "#ff0000";
-                    ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
-                    ctx.lineWidth = 2;
-                    ctx.fillRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
-                    ctx.strokeRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
-                    // Пишем размеры
-                    ctx.font = "10px monospace";
-                    ctx.fillStyle = "#ff0000";
-                    ctx.shadowBlur = 0;
-                    ctx.fillText(`${hitbox.w}x${hitbox.h}`, hitbox.x, hitbox.y - 2);
-                    ctx.restore();
                 }
             }
             update() {
@@ -333,7 +320,6 @@
             }
         }
         
-        // ПОЛУЧИТЬ ХИТБОКС ПЕРСОНАЖА (зелёный прямоугольник)
         function getPlayerHitbox() {
             const playerX = 70 + PLAYER_HITBOX_OFFSET_X;
             const playerY = GROUND_Y + yPos - PLAYER_HITBOX_HEIGHT + PLAYER_HITBOX_OFFSET_Y;
@@ -345,7 +331,6 @@
             };
         }
         
-        // Рисование бегущего человека
         function drawPlayer() {
             const x = 70;
             const y = GROUND_Y + yPos - PLAYER_DRAW_HEIGHT + 8;
@@ -367,26 +352,6 @@
             } else {
                 ctx.fillStyle = "#ffcc88";
                 ctx.fillRect(x, y, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
-                ctx.fillStyle = "#000";
-                ctx.fillRect(x+10, y+10, 8, 8);
-            }
-            
-            // ОТЛАДКА: показываем зелёный хитбокс персонажа
-            if (debugCollisions) {
-                const hitbox = getPlayerHitbox();
-                ctx.save();
-                ctx.strokeStyle = "#00ff00";
-                ctx.fillStyle = "rgba(0, 255, 0, 0.25)";
-                ctx.lineWidth = 2;
-                ctx.fillRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
-                ctx.strokeRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
-                // Пишем размеры и позицию
-                ctx.font = "10px monospace";
-                ctx.fillStyle = "#00ff00";
-                ctx.shadowBlur = 0;
-                ctx.fillText(`Хитбокс ${hitbox.w}x${hitbox.h}`, hitbox.x, hitbox.y - 5);
-                ctx.fillText(`Y:${Math.floor(hitbox.y)}`, hitbox.x, hitbox.y - 15);
-                ctx.restore();
             }
             
             // Тень
@@ -399,11 +364,11 @@
         function spawnObstacle() {
             let dynamicGap = Math.max(70, 140 - Math.floor(speed * 3));
             if (obstacles.length === 0) {
-                obstacles.push(new Ribs(CANVAS_W));
+                obstacles.push(new Ribs(ORIGINAL_WIDTH));
             } else {
                 let last = obstacles[obstacles.length-1];
-                if (last.x < CANVAS_W - dynamicGap) {
-                    obstacles.push(new Ribs(CANVAS_W));
+                if (last.x < ORIGINAL_WIDTH - dynamicGap) {
+                    obstacles.push(new Ribs(ORIGINAL_WIDTH));
                 }
             }
         }
@@ -494,49 +459,46 @@
         }
         
         function draw() {
-            ctx.clearRect(0, 0, CANVAS_W, 250);
+            ctx.clearRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
             
+            // Небо
             const grad = ctx.createLinearGradient(0, 0, 0, 150);
             grad.addColorStop(0, "#87CEEB");
             grad.addColorStop(1, "#B0E0FF");
             ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, CANVAS_W, GROUND_Y);
+            ctx.fillRect(0, 0, ORIGINAL_WIDTH, GROUND_Y);
             
+            // Земля
             ctx.fillStyle = "#8B6914";
-            ctx.fillRect(0, GROUND_Y-4, CANVAS_W, 6);
+            ctx.fillRect(0, GROUND_Y-4, ORIGINAL_WIDTH, 6);
             ctx.fillStyle = "#6B4E0A";
-            ctx.fillRect(0, GROUND_Y-2, CANVAS_W, 4);
+            ctx.fillRect(0, GROUND_Y-2, ORIGINAL_WIDTH, 4);
             ctx.fillStyle = "#D2A64A";
-            ctx.fillRect(0, GROUND_Y-1, CANVAS_W, 3);
+            ctx.fillRect(0, GROUND_Y-1, ORIGINAL_WIDTH, 3);
             
+            // Травка
             ctx.fillStyle = "#5C9E3A";
             for(let i=0; i<20; i++) {
                 ctx.fillRect(10 + i*45 + (frame*0.5)%45, GROUND_Y-8, 3, 6);
             }
             
+            // Рёбрышки
             for(let obs of obstacles) obs.draw();
-            drawPlayer();
             
-            // Дополнительная подсказка при включённой отладке
-            if (debugCollisions) {
-                ctx.font = "12px monospace";
-                ctx.fillStyle = "#ffffff";
-                ctx.shadowBlur = 2;
-                ctx.fillText("🟢 ЗЕЛЁНЫЙ = зона удара персонажа | 🔴 КРАСНЫЙ = зона рёбрышек", 10, 30);
-                ctx.fillText("📐 Настройте PLAYER_HITBOX_... и RIB_HITBOX_... в коде", 10, 50);
-            }
+            // Игрок
+            drawPlayer();
             
             if(!gameRunning) {
                 ctx.fillStyle = "rgba(0,0,0,0.7)";
-                ctx.fillRect(0, 0, CANVAS_W, 250);
+                ctx.fillRect(0, 0, ORIGINAL_WIDTH, ORIGINAL_HEIGHT);
                 ctx.font = "bold 28px 'Courier New'";
                 ctx.fillStyle = "#ffaa66";
-                ctx.fillText("🍖 GAME OVER 🍖", CANVAS_W/2-120, 120);
+                ctx.fillText("🍖 GAME OVER 🍖", ORIGINAL_WIDTH/2-120, 120);
             }
             
             ctx.font = "bold 20px 'Courier New'";
             ctx.fillStyle = "#2c1a0a";
-            ctx.fillText("🍖 "+Math.floor(score), CANVAS_W-80, 35);
+            ctx.fillText("🍖 "+Math.floor(score), ORIGINAL_WIDTH-80, 35);
         }
         
         function restartGame() {
@@ -550,7 +512,7 @@
             frame = 0;
             pendingJump = false;
             document.getElementById('scoreValue').innerText = "0";
-            document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ!";
+            document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖";
             updateHighScoreUI();
         }
         
@@ -560,7 +522,7 @@
                 pendingJump = true;
                 document.getElementById('gameStatusText').innerHTML = "🍖 ПРЫЖОК! 🍖";
                 setTimeout(() => {
-                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ!";
+                    if(gameRunning) document.getElementById('gameStatusText').innerHTML = "🏃‍♂️ БЕГИ! СОБИРАЙ РЁБРЫШКИ 🍖";
                 }, 300);
             }
         }
@@ -593,13 +555,6 @@
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
-        
-        console.log("ОТЛАДКА ВКЛЮЧЕНА! 🟢 Зелёный = хитбокс персонажа, 🔴 Красный = хитбокс рёбрышек");
-        console.log("Настройте эти параметры в коде:");
-        console.log("  PLAYER_HITBOX_WIDTH, PLAYER_HITBOX_HEIGHT");
-        console.log("  PLAYER_HITBOX_OFFSET_X, PLAYER_HITBOX_OFFSET_Y");
-        console.log("  RIB_HITBOX_WIDTH, RIB_HITBOX_HEIGHT");
-        console.log("  RIB_HITBOX_OFFSET_X, RIB_HITBOX_OFFSET_Y");
     })();
 </script>
 </body>
