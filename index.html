@@ -179,6 +179,44 @@
             position: relative;
         }
 
+        .record-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            color: #1a1a1a;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            z-index: 100;
+            animation: slideUp 0.5s ease, fadeOut 0.5s ease 2s forwards;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            font-family: monospace;
+        }
+        .record-toast span {
+            font-size: 1.5rem;
+            margin-right: 8px;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
         @media (max-width: 550px) {
             body {
                 padding: 5px;
@@ -193,6 +231,11 @@
             }
             .start-overlay span {
                 font-size: 1.2rem;
+            }
+            .record-toast {
+                font-size: 0.9rem;
+                padding: 8px 16px;
+                white-space: nowrap;
             }
         }
     </style>
@@ -335,6 +378,10 @@
         let soundEnabled = true;
         let musicEnabled = true;
         
+        let recordSound = null;
+        let lastHighScore = highScore;
+        let pendingRecordScore = null;
+        
         function createAudio(url, loop = false, volume = 0.5) {
             const audio = new Audio();
             audio.src = url;
@@ -342,6 +389,22 @@
             audio.volume = volume;
             audio.load();
             return audio;
+        }
+        
+        function showRecordNotification(newScore) {
+            const toast = document.createElement('div');
+            toast.className = 'record-toast';
+            toast.innerHTML = `<span>🏆 НОВЫЙ РЕКОРД! 🏆</span><br>${newScore} очков!`;
+            document.body.appendChild(toast);
+            
+            if (recordSound && soundEnabled) {
+                recordSound.currentTime = 0;
+                recordSound.play().catch(e => console.log("Record sound error:", e));
+            }
+            
+            setTimeout(() => {
+                if (toast && toast.remove) toast.remove();
+            }, 2500);
         }
         
         let bgMusic = null;
@@ -355,6 +418,7 @@
         
         function initSounds() {
             bgMusic = createAudio("french meme song.mp3", true, 0.3);
+            recordSound = createAudio("manz/record.mp3", false, 0.7);
             
             jumpSounds = [
                 createAudio("manz/jump1.mp3", false, 0.5),
@@ -363,13 +427,11 @@
             
             deathSounds = [
                 createAudio("manz/death1.mp3", false, 0.6),
-                createAudio("manz/death1.mp3", false, 0.6),
-                createAudio("manz/death3.mp3", false, 0.6)
+                createAudio("manz/death3.mp3", false, 0.6),
+                createAudio("manz/death1.mp3", false, 0.6)
             ];
             
-            runningSounds = [
-                <!--createAudio("manz/step1.mp3", false, 0.3)-->
-            ];
+            runningSounds = [];
         }
         
         function getRandomSound(soundArray) {
@@ -509,12 +571,27 @@
         }
         updateHighScoreUI();
         
+        function checkAndShowRecord() {
+            if (pendingRecordScore !== null && pendingRecordScore > 0) {
+                showRecordNotification(pendingRecordScore);
+                pendingRecordScore = null;
+            }
+        }
+        
         function setHighScoreIfNeeded() {
             if(score > highScore) {
+                const isNewRecord = (score > lastHighScore);
                 highScore = score;
                 localStorage.setItem('ribHighScore', highScore);
                 updateHighScoreUI();
+                lastHighScore = highScore;
+                
+                if (isNewRecord && gameStarted) {
+                    pendingRecordScore = score;
+                }
+                return true;
             }
+            return false;
         }
         
         function getPlayerHitbox() {
@@ -685,6 +762,12 @@
                 playRandomDeathSound();
                 stopMusic();
                 document.getElementById('gameStatusText').innerHTML = "💀 GAME OVER 💀";
+                
+                if (pendingRecordScore !== null) {
+                    setTimeout(() => {
+                        checkAndShowRecord();
+                    }, 1000);
+                }
                 return;
             }
             
@@ -741,6 +824,7 @@
             frame = 0;
             pendingJump = false;
             lastRunningSoundFrame = 0;
+            pendingRecordScore = null;
             document.getElementById('scoreValue').innerText = "0";
             document.getElementById('gameStatusText').innerHTML = "🥖 БЕГИ!";
             updateHighScoreUI();
