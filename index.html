@@ -149,6 +149,34 @@
             background: #00aa00;
         }
 
+        /* новая кнопка для второй версии игры */
+        .game-version-btn {
+            background: linear-gradient(135deg, #5a2a8a, #3a1a5a);
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: clamp(0.8rem, 3.5vw, 1rem);
+            padding: 6px clamp(12px, 3vw, 18px);
+            border-radius: 40px;
+            color: #ffe484;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: 0.1s linear;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .game-version-btn:active {
+            transform: scale(0.96);
+        }
+        .version-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
         .start-overlay {
             position: absolute;
             top: 0;
@@ -237,6 +265,10 @@
                 padding: 8px 16px;
                 white-space: nowrap;
             }
+            .version-buttons {
+                order: 2;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -253,7 +285,10 @@
         <div class="info-panel">
             <div class="score-box"><span>🍖 SCORE</span> <span id="scoreValue">0</span></div>
             <div class="high-box"><span>🏆 BEST</span> <span id="highScoreValue">0</span></div>
-            <button class="restart-btn" id="restartButton">▶ НОВАЯ ИГРА</button>
+            <div class="version-buttons">
+                <button class="game-version-btn" id="openSecondVersionBtn">🎮 ИГРА 2.0 🎮</button>
+                <button class="restart-btn" id="restartButton">▶ НОВАЯ ИГРА</button>
+            </div>
         </div>
         <div class="status" id="gameStatusText">🥖 БЕГИ! НЕ ЕШЬ ЭТО!</div>
         <div class="controls-hint">
@@ -880,6 +915,23 @@
                 restartGame();
             }
         });
+        
+        // ========= НОВАЯ КНОПКА ДЛЯ ОТКРЫТИЯ ВТОРОЙ ВЕРСИИ (index2.html) =========
+        const secondVersionBtn = document.getElementById('openSecondVersionBtn');
+        if (secondVersionBtn) {
+            secondVersionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Пытаемся открыть index2.html в той же вкладке
+                // Можно также target="_blank" для новой вкладки, но по заданию "открытие рядом лежашего index2"
+                // Лучше всего открыть в текущей вкладке, чтобы переход был как вторая версия.
+                // Если файла index2.html нет, браузер покажет 404, но это уже на усмотрение пользователя.
+                window.location.href = "index2.html";
+            });
+            secondVersionBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                window.location.href = "index2.html";
+            });
+        }
         
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Space') e.preventDefault();
