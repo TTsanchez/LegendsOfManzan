@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LegendsOfManzan - Полноэкранный режим</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>LegendsOfManzan - С фоновыми объектами</title>
     <style>
         * {
             user-select: none;
@@ -13,7 +15,6 @@
             box-sizing: border-box;
         }
 
-        /* ПОЛНОЭКРАННЫЙ РЕЖИМ */
         html, body {
             position: fixed;
             top: 0;
@@ -29,13 +30,10 @@
         body {
             margin: 0;
             padding: 0;
-            /* Убираем прокрутку */
             overflow: hidden;
-            /* Для safe area (Dynamic Island, notch) */
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        /* Скрываем полосу прокрутки на всем телефоне */
         ::-webkit-scrollbar {
             display: none;
         }
@@ -48,12 +46,10 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
-            /* Высокое качество рендеринга */
             image-rendering: crisp-edges;
             image-rendering: -webkit-optimize-contrast;
         }
 
-        /* Поворот телефона */
         @media (max-width: 768px) and (orientation: portrait) {
             body::before {
                 content: "📱 ПОВЕРНИТЕ ТЕЛЕФОН В ГОРИЗОНТАЛЬНОЕ ПОЛОЖЕНИЕ 📱";
@@ -85,83 +81,114 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // ВКЛЮЧАЕМ ВЫСОКОЕ КАЧЕСТВО ИЗОБРАЖЕНИЯ
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         
-        // Для ретина-экранов - запрашиваем максимальное разрешение
         const pixelRatio = window.devicePixelRatio || 1;
         
         // ========== ФУНКЦИЯ ПОЛНОЭКРАННОГО РЕЖИМА ==========
         function requestFullscreen() {
             const elem = document.documentElement;
             if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => {
-                    console.log(`Ошибка fullscreen: ${err.message}`);
-                });
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.requestFullscreen().catch(err => console.log(err));
+            } else if (elem.webkitRequestFullscreen) {
                 elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE/Edge */
-                elem.msRequestFullscreen();
             }
         }
-        
-        // Активируем полноэкранный режим по клику на канвас
-        canvas.addEventListener('click', () => {
-            if (!gameStarted) {
-                requestFullscreen();
-                startGame();
-            } else if (gameRunning) {
-                jump();
-            }
-        });
-        
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (!gameStarted) {
-                requestFullscreen();
-                startGame();
-            } else if (gameRunning) {
-                jump();
-            }
-        });
         
         // ========== НАСТРОЙКИ ИГРЫ ==========
         const CONFIG = {
             GROUND_Y_PERCENT: 68,
             JUMP_HEIGHT_PERCENT: 28,
-            
             PLAYER_WIDTH_PERCENT: 18,
             PLAYER_HEIGHT_PERCENT: 26,
             PLAYER_X_PERCENT: 8,
             PLAYER_Y_OFFSET_PERCENT: 5,
-            
             HITBOX_WIDTH_PERCENT: 45,
             HITBOX_HEIGHT_PERCENT: 85,
             HITBOX_OFFSET_X_PERCENT: 12,
             HITBOX_OFFSET_Y_PERCENT: 0,
-            
             OBSTACLE_SIZE_PERCENT: 14,
-            
             GRAVITY_PX_PER_FRAME2: 0.65,
             BASE_SPEED_PX_PER_FRAME: 7,
             MAX_SPEED_PX_PER_FRAME: 26,
             SCORE_SPEED_INCREASE: 400,
             SPAWN_BASE_RATE: 70,
-            
             GRASS_HEIGHT_PERCENT: 28,
             GRASS_SPEED_MULT: 0.8,
-            
             UI_FONT_SIZE_PERCENT: 1.2,
             UI_PANEL_WIDTH_PERCENT: 5,
             GAMEOVER_FONT_SIZE_PERCENT: 2,
             GAMEOVER_BTN_WIDTH_PERCENT: 28,
             GAMEOVER_BTN_HEIGHT_PERCENT: 7,
-            
             BACKGROUND_OBJECTS: {
-                ENABLED: false,
+                ENABLED: true,           // ← ВКЛЮЧАЕМ фоновые объекты!
+                SPAWN_CHANCE: 0.015,     // чуть реже появляются
+                MIN_DISTANCE: 1000,
+                MAX_OBJECTS: 3,
             },
         };
+        
+        // ========== ФОНОВЫЕ ОБЪЕКТЫ (с обработкой ошибок) ==========
+        const BG_OBJECTS_CONFIG = [
+            {
+                type: "static",
+                image: "manz/zabor.png",
+                sizePercent: 14,
+                sinkPercent: 25,
+                speedMult: 0.6,
+                spawnWeight: 1,
+                name: "Забор"
+            },
+            {
+                type: "static",
+                image: "manz/вышка.png",
+                sizePercent: 45,
+                sinkPercent: 6,
+                speedMult: 0.6,
+                spawnWeight: 0.5,
+                name: "Вышка"
+            },
+            {
+                type: "static",
+                image: "manz/вышка2.png",
+                sizePercent: 45,
+                sinkPercent: 6,
+                speedMult: 0.6,
+                spawnWeight: 0.5,
+                name: "Вышка2"
+            },
+            {
+                type: "animated",
+                frames: [
+                    "lexa/IMG_4700_00000.png", "lexa/IMG_4700_00001.png", "lexa/IMG_4700_00002.png",
+                    "lexa/IMG_4700_00003.png", "lexa/IMG_4700_00004.png", "lexa/IMG_4700_00005.png",
+                    "lexa/IMG_4700_00006.png", "lexa/IMG_4700_00007.png", "lexa/IMG_4700_00008.png",
+                    "lexa/IMG_4700_00009.png", "lexa/IMG_4700_00010.png", "lexa/IMG_4700_00011.png",
+                    "lexa/IMG_4700_00012.png", "lexa/IMG_4700_00013.png", "lexa/IMG_4700_00014.png",
+                    "lexa/IMG_4700_00015.png", "lexa/IMG_4700_00016.png", "lexa/IMG_4700_00017.png",
+                    "lexa/IMG_4700_00018.png", "lexa/IMG_4700_00019.png", "lexa/IMG_4700_00020.png",
+                    "lexa/IMG_4700_00021.png", "lexa/IMG_4700_00022.png", "lexa/IMG_4700_00023.png",
+                    "lexa/IMG_4700_00024.png", "lexa/IMG_4700_00025.png", "lexa/IMG_4700_00026.png",
+                    "lexa/IMG_4700_00027.png", "lexa/IMG_4700_00028.png", "lexa/IMG_4700_00029.png",
+                    "lexa/IMG_4700_00030.png", "lexa/IMG_4700_00031.png", "lexa/IMG_4700_00032.png",
+                    "lexa/IMG_4700_00033.png", "lexa/IMG_4700_00034.png", "lexa/IMG_4700_00035.png",
+                    "lexa/IMG_4700_00036.png", "lexa/IMG_4700_00037.png", "lexa/IMG_4700_00038.png",
+                    "lexa/IMG_4700_00039.png", "lexa/IMG_4700_00040.png", "lexa/IMG_4700_00041.png",
+                    "lexa/IMG_4700_00042.png", "lexa/IMG_4700_00043.png", "lexa/IMG_4700_00044.png",
+                    "lexa/IMG_4700_00045.png", "lexa/IMG_4700_00046.png", "lexa/IMG_4700_00047.png",
+                    "lexa/IMG_4700_00048.png", "lexa/IMG_4700_00049.png", "lexa/IMG_4700_00050.png",
+                    "lexa/IMG_4700_00051.png", "lexa/IMG_4700_00052.png", "lexa/IMG_4700_00053.png",
+                    "lexa/IMG_4700_00054.png"
+                ],
+                frameDelay: 2,
+                sizePercent: 20,
+                sinkPercent: 5,
+                speedMult: 0.6,
+                spawnWeight: 0.8,
+                name: "leha"
+            },
+        ];
         
         // ========== ПУТИ К ФАЙЛАМ ==========
         const GRASS_TEXTURE_IMAGE = "manz/grass_z.png";
@@ -228,21 +255,35 @@
         let showRecordNotification = false;
         let recordNotificationTimer = 0;
         
-        let totalToLoad = RUN_FRAMES.length + 4;
+        // Фоновые объекты
+        let bgObjectsData = [];
+        let bgObjectsList = [];
+        let bgObjectsReady = false;
         
-        // ========== ВЫСОКОЕ КАЧЕСТВО ИЗОБРАЖЕНИЯ ==========
+        // Подсчёт ресурсов для загрузки
+        function calculateTotalToLoad() {
+            let total = RUN_FRAMES.length + 4; // бег, прыжок, ребро, фон, трава
+            if (CONFIG.BACKGROUND_OBJECTS.ENABLED) {
+                for (let obj of BG_OBJECTS_CONFIG) {
+                    if (obj.type === "static") total += 1;
+                    else if (obj.type === "animated") total += obj.frames.length;
+                }
+            }
+            return total;
+        }
+        
+        let totalToLoad = calculateTotalToLoad();
+        
+        // ========== РАЗМЕРЫ И ФИЗИКА ==========
         function resizeCanvas() {
-            // Получаем реальные размеры с учетом safe area
             screenWidth = window.innerWidth;
             screenHeight = window.innerHeight;
             
-            // Устанавливаем canvas с учетом pixel ratio для четкости
             canvas.width = screenWidth * pixelRatio;
             canvas.height = screenHeight * pixelRatio;
             canvas.style.width = screenWidth + 'px';
             canvas.style.height = screenHeight + 'px';
             
-            // Масштабируем контекст для корректной работы координат
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.scale(pixelRatio, pixelRatio);
             
@@ -256,7 +297,6 @@
         
         function recalcSizes() {
             groundY = screenHeight * (CONFIG.GROUND_Y_PERCENT / 100);
-            
             playerWidth = screenHeight * (CONFIG.PLAYER_WIDTH_PERCENT / 100);
             playerHeight = screenHeight * (CONFIG.PLAYER_HEIGHT_PERCENT / 100);
             playerX = screenWidth * (CONFIG.PLAYER_X_PERCENT / 100);
@@ -285,32 +325,98 @@
             
             currentSpeed = CONFIG.BASE_SPEED_PX_PER_FRAME;
             recalcPhysics();
+            
+            // Обновляем размеры фоновых объектов
+            for (let obj of bgObjectsList) {
+                if (obj.updateSize) obj.updateSize();
+            }
         }
         
-        // ========== ЗАГРУЗКА РЕСУРСОВ ==========
+        // ========== ЗАГРУЗКА ФОНОВЫХ ОБЪЕКТОВ ==========
+        function loadBackgroundObjects() {
+            if (!CONFIG.BACKGROUND_OBJECTS.ENABLED) {
+                bgObjectsReady = true;
+                return;
+            }
+            
+            for (let i = 0; i < BG_OBJECTS_CONFIG.length; i++) {
+                const config = BG_OBJECTS_CONFIG[i];
+                
+                if (config.type === "static") {
+                    const img = new Image();
+                    img.onload = () => {
+                        imageLoaded();
+                        console.log(`✅ Загружен: ${config.name}`);
+                    };
+                    img.onerror = () => {
+                        console.warn(`⚠️ Не загружен: ${config.name}`);
+                        imageLoaded();
+                    };
+                    img.src = config.image;
+                    
+                    bgObjectsData.push({
+                        type: "static",
+                        image: img,
+                        config: config
+                    });
+                    
+                } else if (config.type === "animated") {
+                    const frames = [];
+                    let loadedFrames = 0;
+                    
+                    for (let f = 0; f < config.frames.length; f++) {
+                        const frameImg = new Image();
+                        frameImg.onload = () => {
+                            loadedFrames++;
+                            imageLoaded();
+                            if (loadedFrames === config.frames.length) {
+                                console.log(`✅ Загружен анимированный: ${config.name}`);
+                            }
+                        };
+                        frameImg.onerror = () => {
+                            loadedFrames++;
+                            imageLoaded();
+                        };
+                        frameImg.src = config.frames[f];
+                        frames.push(frameImg);
+                    }
+                    
+                    bgObjectsData.push({
+                        type: "animated",
+                        frames: frames,
+                        config: config,
+                        currentFrame: 0,
+                        frameCounter: 0
+                    });
+                }
+            }
+        }
+        
+        // ========== ЗАГРУЗКА ОСНОВНЫХ РЕСУРСОВ ==========
         function imageLoaded() {
             loadedCount++;
             if (loadedCount >= totalToLoad) {
                 console.log("✅ Все ресурсы загружены!");
+                bgObjectsReady = true;
             }
         }
         
         for (let i = 0; i < RUN_FRAMES.length; i++) {
             let img = new Image();
             img.onload = imageLoaded;
-            img.onerror = () => { console.warn(`⚠️ Не загружен: ${RUN_FRAMES[i]}`); imageLoaded(); };
+            img.onerror = () => imageLoaded();
             img.src = RUN_FRAMES[i];
             runImages.push(img);
         }
         
         jumpImage = new Image();
         jumpImage.onload = imageLoaded;
-        jumpImage.onerror = () => { console.warn("⚠️ Не загружен прыжок"); imageLoaded(); };
+        jumpImage.onerror = () => imageLoaded();
         jumpImage.src = JUMP_SPRITE;
         
         ribImage = new Image();
         ribImage.onload = imageLoaded;
-        ribImage.onerror = () => { console.warn("⚠️ Не загружено ребро"); imageLoaded(); };
+        ribImage.onerror = () => imageLoaded();
         ribImage.src = RIB_SPRITE;
         
         parisBackground.onload = () => { backgroundLoaded = true; imageLoaded(); };
@@ -322,6 +428,127 @@
         grassTexture.onerror = () => { grassTextureLoaded = false; imageLoaded(); };
         grassTexture.src = GRASS_TEXTURE_IMAGE;
         
+        loadBackgroundObjects();
+        
+        // ========== ФОНОВЫЕ ОБЪЕКТЫ (класс) ==========
+        class BackgroundObject {
+            constructor(xPos, objectData) {
+                this.x = xPos;
+                this.objectData = objectData;
+                this.width = 0;
+                this.height = 0;
+                this.updateSize();
+            }
+            
+            updateSize() {
+                let imgToUse = null;
+                if (this.objectData.type === "static") {
+                    imgToUse = this.objectData.image;
+                } else if (this.objectData.type === "animated") {
+                    if (this.objectData.frames.length > 0) {
+                        imgToUse = this.objectData.frames[0];
+                    }
+                }
+                if (!imgToUse || !imgToUse.complete || imgToUse.naturalWidth === 0) return;
+                
+                const baseSize = screenHeight * (this.objectData.config.sizePercent / 100);
+                const aspectRatio = imgToUse.naturalWidth / imgToUse.naturalHeight;
+                this.height = baseSize;
+                this.width = this.height * aspectRatio;
+            }
+            
+            getCurrentImage() {
+                if (this.objectData.type === "static") {
+                    return this.objectData.image;
+                } else if (this.objectData.type === "animated") {
+                    return this.objectData.frames[this.objectData.currentFrame];
+                }
+                return null;
+            }
+            
+            updateAnimation() {
+                if (this.objectData.type !== "animated") return;
+                const animData = this.objectData;
+                animData.frameCounter++;
+                if (animData.frameCounter >= animData.config.frameDelay) {
+                    animData.frameCounter = 0;
+                    animData.currentFrame = (animData.currentFrame + 1) % animData.frames.length;
+                }
+            }
+            
+            draw() {
+                const imgToDraw = this.getCurrentImage();
+                if (!imgToDraw || !imgToDraw.complete || imgToDraw.naturalWidth === 0) return;
+                if (this.width === 0) this.updateSize();
+                
+                const sinkOffset = this.height * (this.objectData.config.sinkPercent / 100);
+                const y = groundY - this.height + sinkOffset;
+                ctx.drawImage(imgToDraw, this.x, y, this.width, this.height);
+            }
+            
+            update() {
+                this.updateAnimation();
+                this.x -= currentSpeed * this.objectData.config.speedMult;
+            }
+            
+            isOffscreen() {
+                return this.x + this.width < 0;
+            }
+        }
+        
+        function spawnBackgroundObject() {
+            if (!CONFIG.BACKGROUND_OBJECTS.ENABLED) return;
+            if (!bgObjectsReady) return;
+            if (bgObjectsData.length === 0) return;
+            if (bgObjectsList.length >= CONFIG.BACKGROUND_OBJECTS.MAX_OBJECTS) return;
+            
+            let lastX = -1000;
+            for (let obj of bgObjectsList) {
+                if (obj.x > lastX) lastX = obj.x;
+            }
+            if (lastX + CONFIG.BACKGROUND_OBJECTS.MIN_DISTANCE > screenWidth) return;
+            if (Math.random() > CONFIG.BACKGROUND_OBJECTS.SPAWN_CHANCE) return;
+            
+            let totalWeight = 0;
+            for (let obj of bgObjectsData) {
+                totalWeight += obj.config.spawnWeight;
+            }
+            
+            let random = Math.random() * totalWeight;
+            let selectedObject = null;
+            for (let obj of bgObjectsData) {
+                random -= obj.config.spawnWeight;
+                if (random <= 0) {
+                    selectedObject = obj;
+                    break;
+                }
+            }
+            if (!selectedObject) selectedObject = bgObjectsData[0];
+            
+            const newObj = new BackgroundObject(screenWidth + Math.random() * 150, selectedObject);
+            bgObjectsList.push(newObj);
+            console.log(`🌿 Появился: ${selectedObject.config.name}`);
+        }
+        
+        function updateBackgroundObjects() {
+            for (let i = 0; i < bgObjectsList.length; i++) {
+                bgObjectsList[i].update();
+                if (bgObjectsList[i].isOffscreen()) {
+                    bgObjectsList.splice(i, 1);
+                    i--;
+                }
+            }
+            if (gameStarted && gameRunning && CONFIG.BACKGROUND_OBJECTS.ENABLED) {
+                spawnBackgroundObject();
+            }
+        }
+        
+        function drawBackgroundObjects() {
+            for (let obj of bgObjectsList) {
+                obj.draw();
+            }
+        }
+        
         // ========== ЗВУКИ ==========
         function createAudio(url, loop = false, volume = 0.5) {
             if (!url) return null;
@@ -330,7 +557,6 @@
                 audio.src = url;
                 audio.loop = loop;
                 audio.volume = volume;
-                audio.load();
                 return audio;
             } catch(e) { return null; }
         }
@@ -370,17 +596,11 @@
             DEATH_SOUNDS.forEach(s => { let a = createAudio(s, false, 0.6); if(a) deathSounds.push(a); });
         }
         
-        function updateBackgroundObjects() {}
-        function drawBackgroundObjects() {}
-        
         // ========== ОТРИСОВКА ==========
         function drawHitbox(x, y, w, h, color = "rgba(255, 0, 0, 0.4)") {
             if (!showHitboxes) return;
             ctx.fillStyle = color;
             ctx.fillRect(x, y, w, h);
-            ctx.strokeStyle = "#ff0000";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x, y, w, h);
         }
         
         class Ribs {
@@ -396,8 +616,6 @@
                     ctx.fillStyle = "#ffaa66";
                     ctx.fillRect(this.x, groundY - this.size, this.size, this.size);
                 }
-                const obsBox = this.getHitboxRect();
-                drawHitbox(obsBox.x, obsBox.y, obsBox.w, obsBox.h, "rgba(0, 255, 0, 0.3)");
             }
             update() { this.x -= currentSpeed; }
             getHitboxRect() {
@@ -487,10 +705,6 @@
                 ctx.fillStyle = "#ffcc88";
                 ctx.fillRect(x, y, playerWidth, playerHeight);
             }
-            
-            const playerHitboxX = playerX + hitboxX;
-            const playerHitboxY = playerYBase + yPos + hitboxY;
-            drawHitbox(playerHitboxX, playerHitboxY, hitboxW, hitboxH, "rgba(255, 0, 0, 0.3)");
         }
         
         function drawUI() {
@@ -500,19 +714,19 @@
             ctx.fillStyle = "rgba(0,0,0,0.6)";
             ctx.fillRect(margin, margin, uiPanelWidth, panelH);
             ctx.fillStyle = "#ffd966";
-            ctx.font = `bold ${uiFontSize - 2}px "Segoe UI", monospace`;
+            ctx.font = `bold ${uiFontSize - 2}px monospace`;
             ctx.fillText("СЧЁТ", margin + 6, margin + uiFontSize);
             ctx.fillStyle = "#fff";
-            ctx.font = `bold ${uiFontSize + 2}px "Segoe UI", monospace`;
+            ctx.font = `bold ${uiFontSize + 2}px monospace`;
             ctx.fillText(Math.floor(score), margin + 6, margin + uiFontSize * 1.7);
             
             ctx.fillStyle = "rgba(0,0,0,0.6)";
             ctx.fillRect(screenWidth - uiPanelWidth - margin, margin, uiPanelWidth, panelH);
             ctx.fillStyle = "#ffd966";
-            ctx.font = `bold ${uiFontSize - 2}px "Segoe UI", monospace`;
+            ctx.font = `bold ${uiFontSize - 2}px monospace`;
             ctx.fillText("РЕКОРД", screenWidth - uiPanelWidth - margin + 6, margin + uiFontSize);
             ctx.fillStyle = "#fff";
-            ctx.font = `bold ${uiFontSize + 2}px "Segoe UI", monospace`;
+            ctx.font = `bold ${uiFontSize + 2}px monospace`;
             ctx.fillText(highScore, screenWidth - uiPanelWidth - margin + 6, margin + uiFontSize * 1.7);
             
             const musicW = uiFontSize * 2.8;
@@ -530,7 +744,7 @@
             ctx.fillStyle = "rgba(0,0,0,0.85)";
             ctx.fillRect(0, 0, screenWidth, screenHeight);
             
-            ctx.font = `bold ${gameOverFontSize}px "Segoe UI", monospace`;
+            ctx.font = `bold ${gameOverFontSize}px monospace`;
             ctx.fillStyle = "#ffaa66";
             const goText = "GAME OVER";
             const tw = ctx.measureText(goText).width;
@@ -574,7 +788,7 @@
             ctx.fillRect(0, 0, screenWidth, screenHeight);
             
             const titleSize = Math.max(20, Math.floor(screenWidth / 26));
-            ctx.font = `bold ${titleSize}px "Segoe UI", monospace`;
+            ctx.font = `bold ${titleSize}px monospace`;
             ctx.fillStyle = "#ffaa66";
             const title = "👉 НАЖМИТЕ, ЧТОБЫ НАЧАТЬ 👈";
             const tw = ctx.measureText(title).width;
@@ -585,18 +799,6 @@
             const subtitle = "Legends Of Manzan";
             const sw = ctx.measureText(subtitle).width;
             ctx.fillText(subtitle, screenWidth/2 - sw/2, screenHeight/2 + 20);
-            
-            ctx.font = `${titleSize - 10}px monospace`;
-            ctx.fillStyle = "#aaa";
-            const hint = "🔘 КЛИК / ПРОБЕЛ / СТРЕЛКА — ПРЫЖОК";
-            const hw = ctx.measureText(hint).width;
-            ctx.fillText(hint, screenWidth/2 - hw/2, screenHeight/2 + 80);
-            
-            ctx.font = `${titleSize - 12}px monospace`;
-            ctx.fillStyle = "#666";
-            const fullHint = "🎮 Игра откроется на весь экран";
-            const fw = ctx.measureText(fullHint).width;
-            ctx.fillText(fullHint, screenWidth/2 - fw/2, screenHeight/2 + 130);
         }
         
         function draw() {
@@ -702,6 +904,7 @@
             gameRunning = true;
             score = 0;
             obstacles = [];
+            bgObjectsList = [];
             isJumping = false;
             yPos = 0;
             yVelocity = 0;
@@ -743,7 +946,6 @@
             const canvasX = (clientX - rect.left) * scaleX;
             const canvasY = (clientY - rect.top) * scaleY;
             
-            // Кнопка рестарта
             if (gameStarted && !gameRunning) {
                 const btnX = screenWidth/2 - gameOverBtnW/2;
                 const btnY = screenHeight/2 + 40;
@@ -753,7 +955,6 @@
                 }
             }
             
-            // Кнопка музыки
             const margin = 8;
             const panelH = uiFontSize * 2.2;
             const musicW = uiFontSize * 2.8;
@@ -767,23 +968,14 @@
             }
             
             if (!gameStarted) {
+                requestFullscreen();
                 startGame();
             } else if (gameRunning) {
                 jump();
             }
         }
         
-        // Следим за изменением размера экрана (поворот телефона)
         window.addEventListener('resize', () => {
-            resizeCanvas();
-            for(let obs of obstacles) if(obs) obs.size = obstacleSize;
-        });
-        
-        // Обработка полного экрана
-        document.addEventListener('fullscreenchange', () => {
-            setTimeout(resizeCanvas, 100);
-        });
-        document.addEventListener('webkitfullscreenchange', () => {
             setTimeout(resizeCanvas, 100);
         });
         
